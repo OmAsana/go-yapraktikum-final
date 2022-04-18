@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"github.com/OmAsana/go-yapraktikum-final/pkg/cmd"
+)
 
 func main() {
-	fmt.Println("Test that tests run")
+	cmd.Execute()
 }
