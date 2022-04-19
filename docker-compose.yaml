@@ -8,7 +8,7 @@ services:
       context: .
       dockerfile: gophermart.Dockerfile
     environment:
-      DATABASE_URI: "postgresql://practicum:practicum@postgre:5432"
+      DATABASE_URI: "postgresql://practicum:practicum@practicum:5432"
       RUN_ADDRESS: localhost:8081
       ACCRUAL_SYSTEM_ADDRESS: localhost:9090
       LOG_LEVEL: debug
