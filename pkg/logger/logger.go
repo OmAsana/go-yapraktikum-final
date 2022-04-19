@@ -72,3 +72,7 @@ func NewLogger() *zap.Logger {
 func NewNoop() *zap.Logger {
 	return zap.NewNop()
 }
+
+func NewDevLogger() (*zap.Logger, error) {
+	return zap.NewDevelopment()
+}
