@@ -10,7 +10,15 @@ import (
 //go:embed sql/*.sql
 var embedMigrations embed.FS
 
-func ApplyMigrations(db *sql.DB) error {
+func ApplyMigrations(uri string) error {
+	db, err := sql.Open("pgx", uri)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = db.Close()
+	}()
+
 	goose.SetBaseFS(embedMigrations)
 
 	if err := goose.SetDialect("postgres"); err != nil {

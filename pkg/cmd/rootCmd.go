@@ -8,10 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/OmAsana/go-yapraktikum-final/migrations"
 	"github.com/OmAsana/go-yapraktikum-final/pkg/logger"
 	"github.com/OmAsana/go-yapraktikum-final/pkg/server"
 )
@@ -48,6 +50,10 @@ func run(cmd *cobra.Command, args []string) {
 
 	defer log.Sync()
 	ctx := rootContext(log)
+
+	if err := migrations.ApplyMigrations(Config.DatabaseURI); err != nil {
+		log.Sugar().Fatalf("migration: failed to apply migration: %v\n", err)
+	}
 
 	handler := server.NewServer(log)
 	srv := &http.Server{Addr: Config.RunAddress, Handler: handler,

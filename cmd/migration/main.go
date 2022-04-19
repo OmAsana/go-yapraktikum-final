@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"flag"
 	"log"
 	"os"
@@ -25,17 +24,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, err := sql.Open("pgx", *databaseDSN)
-	if err != nil {
-		log.Fatalf("migration: failed to open DB: %v\n", err)
-	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Fatalf("migration: failed to close DB: %v\n", err)
-		}
-	}()
-
-	if err := migrations.ApplyMigrations(db); err != nil {
+	if err := migrations.ApplyMigrations(*databaseDSN); err != nil {
 		log.Fatalf("migration: failed to apply migration: %v\n", err)
 	}
 
