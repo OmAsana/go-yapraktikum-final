@@ -5,8 +5,6 @@ import (
 	"log"
 	"os"
 
-	_ "github.com/jackc/pgx/v4/stdlib"
-
 	"github.com/OmAsana/go-yapraktikum-final/migrations"
 )
 

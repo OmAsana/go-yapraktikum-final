@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"embed"
 
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/pressly/goose/v3"
 )
 
