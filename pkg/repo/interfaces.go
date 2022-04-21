@@ -10,8 +10,9 @@ import (
 type Error error
 
 var (
-	UserNotFound   Error = errors.New("user does not exist")
-	UserAuthFailed Error = errors.New("user authentication failed")
+	UserNotFound      Error = errors.New("user does not exist")
+	UserAuthFailed    Error = errors.New("user authentication failed")
+	UserAlreadyExists Error = errors.New("duplicate user name")
 
 	DuplicateOrder Error = errors.New("duplicate order")
 
@@ -20,12 +21,11 @@ var (
 
 type User interface {
 	Create(ctx context.Context, username string, pwdHash string) Error
-	Authenticate(ctx context.Context, username string, pwdHash string) Error
-	CurrentBalance(ctx context.Context, username string) int
+	Authenticate(ctx context.Context, username string, pwdHash string) (int, Error)
 }
-
 type Order interface {
 	CreateNewOrder(ctx context.Context, order models.Order) Error
 	ListOrders(ctx context.Context, username string) []*models.Order
 	ListWithdrawals(ctx context.Context, username string) []*models.Order
+	CurrentBalance(ctx context.Context, userId int) int
 }
