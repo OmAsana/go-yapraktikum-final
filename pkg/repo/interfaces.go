@@ -25,7 +25,7 @@ type User interface {
 }
 type Order interface {
 	CreateNewOrder(ctx context.Context, order models.Order) Error
-	ListOrders(ctx context.Context, username string) []*models.Order
-	ListWithdrawals(ctx context.Context, username string) []*models.Order
-	CurrentBalance(ctx context.Context, userId int) int
+	ListOrders(ctx context.Context, userId int) ([]*models.Order, error)
+	ListWithdrawals(ctx context.Context, userId int) ([]*models.Order, error)
+	CurrentBalance(ctx context.Context, userId int) (int, Error)
 }
