@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -41,17 +42,42 @@ func (u *userRepo) Create(ctx context.Context, username string, pwdHash string) 
 	}
 	_, err = prepareContext.ExecContext(ctx, username, pwdHash, now)
 	if err != nil {
+		// duplicate key error
+		if strings.Contains(err.Error(), "SQLSTATE 23505") {
+			return UserAlreadyExists
+		}
+
 		return InternalError
 	}
 	return nil
 }
 
-func (u *userRepo) Authenticate(ctx context.Context, username string, pwdHash string) Error {
-	//TODO implement me
-	panic("implement me")
-}
+func (u *userRepo) Authenticate(ctx context.Context, username string, pwdHash string) (int, Error) {
+	var err error
+	l := u.log.With(zap.String("username", username))
+	defer func() {
+		if err != nil {
+			l.Error("could not authenticate user", zap.Error(err))
+		}
+	}()
 
-func (u *userRepo) CurrentBalance(ctx context.Context, username string) int {
-	//TODO implement me
-	panic("implement me")
+	sqlStatement := `SELECT user_id, password_hash from users where username=$1`
+
+	var hash string
+	var id int
+	err = u.db.QueryRowContext(ctx, sqlStatement, username).Scan(&id, &hash)
+	switch {
+	case err == sql.ErrNoRows:
+		u.log.Error("user does not exist")
+		return -1, UserAuthFailed
+	case err != nil:
+		return -1, InternalError
+	}
+
+	if hash != pwdHash {
+		u.log.Error("wrong password")
+		return -1, UserAuthFailed
+	}
+
+	return id, nil
 }
