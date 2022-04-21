@@ -14,9 +14,8 @@ type OrderStatus string
 var (
 	NewStatus        OrderStatus = "NEW"
 	ProcessingStatus OrderStatus = "PROCESSING"
-
-	InvalidStatus   OrderStatus = "INVALID"
-	ProcessedStatus OrderStatus = "PROCESSED"
+	InvalidStatus    OrderStatus = "INVALID"
+	ProcessedStatus  OrderStatus = "PROCESSED"
 )
 
 type Order struct {
