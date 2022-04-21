@@ -17,7 +17,7 @@ CREATE TABLE if not exists public.orders
     accrual      NUMERIC DEFAULT 0,
     user_id      INT,
     uploaded_at  TIMESTAMP   NOT NULL,
-    processed_at TIMESTAMP   NOT NULL,
+    processed_at TIMESTAMP,
     PRIMARY KEY (order_id),
     CONSTRAINT fk_user
         FOREIGN KEY (user_id)
