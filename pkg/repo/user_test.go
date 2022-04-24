@@ -62,7 +62,8 @@ func TestCreateUser(t *testing.T) {
 			db, mock, err := sqlmock.New()
 			require.NoError(t, err)
 			defer db.Close()
-			q := mock.ExpectPrepare("INSERT INTO (.+)").
+			sqlQuery := `INSERT INTO users\(username, password_hash, created_at\) VALUES\(\$1, \$2, \$3\)`
+			q := mock.ExpectPrepare(sqlQuery).
 				ExpectExec().
 				WithArgs(tt.args.username, tt.password, sqlmock.AnyArg())
 
@@ -121,7 +122,8 @@ func TestUserAuth(t *testing.T) {
 			db, mock, err := sqlmock.New()
 			require.NoError(t, err)
 			defer db.Close()
-			q := mock.ExpectQuery("^SELECT user_id, password_hash from users (.+)$").
+			sqlStatement := `SELECT user_id, password_hash FROM users WHERE username=\$1`
+			q := mock.ExpectQuery(sqlStatement).
 				WithArgs(tt.args.username)
 
 			columns := []string{"user_id", "password_hash"}

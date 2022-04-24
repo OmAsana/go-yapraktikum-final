@@ -34,8 +34,7 @@ func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Erro
 			l.Error("error creating order", zap.Error(err))
 		}
 	}()
-	sqlStatement := `
-INSERT INTO orders (order_id, status, tx_type, accrual, user_id, uploaded_at) 
+	sqlStatement := `INSERT INTO orders (order_id, status, tx_type, accrual, user_id, uploaded_at) 
 VALUES ($1, $2, $3, $4, $5, $6)`
 
 	res, err := u.db.ExecContext(ctx, sqlStatement,
@@ -85,11 +84,9 @@ func (u *orderRepo) queryOrders(ctx context.Context, userId int, orderType model
 		}
 	}()
 
-	sqlStatement := `
-SELECT order_id, status, tx_type, accrual, user_id, uploaded_at, processed_at
+	sqlStatement := `SELECT order_id, status, tx_type, accrual, user_id, uploaded_at, processed_at
 FROM orders 
-WHERE user_id = $1 AND tx_type = $2
-`
+WHERE user_id = $1 AND tx_type = $2`
 
 	rows, err := u.db.QueryContext(ctx, sqlStatement, userId, orderType)
 	if err != nil {

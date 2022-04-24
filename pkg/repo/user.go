@@ -61,7 +61,7 @@ func (u *userRepo) Authenticate(ctx context.Context, username string, pwdHash st
 		}
 	}()
 
-	sqlStatement := `SELECT user_id, password_hash from users where username=$1`
+	sqlStatement := `SELECT user_id, password_hash FROM users WHERE username=$1`
 
 	var hash string
 	var id int

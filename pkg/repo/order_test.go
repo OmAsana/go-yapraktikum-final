@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -54,7 +55,8 @@ func Test_orderRepo_CreateNewOrder(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			q := mock.ExpectExec(`INSERT INTO orders (.+) VALUES (.+)`).
+			q := mock.ExpectExec(`INSERT INTO orders \(order_id, status, tx_type, accrual, user_id, uploaded_at\) 
+VALUES \(\$1, \$2, \$3, \$4, \$5, \$6\)`).
 				WithArgs(
 					tt.order.OrderId,
 					models.NewStatus,
@@ -95,7 +97,7 @@ func Test_orderRepo_CurrentBalance(t *testing.T) {
 
 	uId := 3
 	sum := 20
-	q := mock.ExpectQuery("^SELECT COALESCE\\(SUM\\(accrual\\),0\\) AS total from orders where user_id = \\$1").WithArgs(uId)
+	q := mock.ExpectQuery(`SELECT COALESCE\(SUM\(accrual\),0\) AS total FROM orders WHERE user_id = \$1`).WithArgs(uId)
 	q.WillReturnRows(mock.NewRows([]string{"total"}).AddRow(sum))
 	q.WillReturnError(nil)
 
@@ -104,43 +106,96 @@ func Test_orderRepo_CurrentBalance(t *testing.T) {
 	require.Equal(t, sum, balance)
 }
 
-//func Test_orderRepo_queryOrders(t *testing.T) {
-//	columns := []string{
-//		"order_id",
-//		"status",
-//		"tx_type",
-//		"accrual",
-//		"user_id",
-//		"uploaded_at",
-//		"processed_at",
-//	}
-//	tests := []struct {
-//		name    string
-//		wantErr bool
-//		err     Error
-//		userId  int
-//		rows    []*sqlmock.Rows
-//		orders  []*models.Order
-//	}{
-//		{
-//			"depost",
-//			false,
-//			nil,
-//			2,
-//			sqlmock.NewRows(columns).AddRow(),
-//			[]*models.Order{},
-//		},
-//	}
-//	//db, err := sql.Open("pgx", testDb)
-//	//require.NoError(t, err)
-//	//
-//	//log := newDevLogger(t)
-//	//repo := orderRepo{db, log}
-//	//
-//	//orders, err := repo.queryOrders(context.Background(), 2, models.DepositOrder)
-//	//require.NoError(t, err)
-//	//
-//	//for _, o := range orders {
-//	//	fmt.Println(o)
-//	//}
-//}
+func Test_orderRepo_queryOrders(t *testing.T) {
+	columns := []string{
+		"order_id",
+		"status",
+		"tx_type",
+		"accrual",
+		"user_id",
+		"uploaded_at",
+		"processed_at",
+	}
+	tests := []struct {
+		name    string
+		TXtype  models.OrderType
+		wantErr bool
+		err     Error
+		userId  int
+		rows    *sqlmock.Rows
+		orders  []*models.Order
+	}{
+		{
+			"withdrawal",
+			models.WithdrawalOrder,
+			false,
+			nil,
+			2,
+			sqlmock.NewRows(columns).AddRow(
+				1,
+				models.NewStatus,
+				models.WithdrawalOrder,
+				10,
+				5,
+				time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
+				time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
+			),
+			[]*models.Order{{
+				OrderId:     1,
+				Status:      models.NewStatus,
+				TXType:      models.WithdrawalOrder,
+				Accrual:     10,
+				UserId:      5,
+				UploadedAt:  time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
+				ProcessedAt: time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
+			}},
+		},
+		{
+			"deposit",
+			models.DepositOrder,
+			false,
+			nil,
+			2,
+			sqlmock.NewRows(columns).AddRow(
+				1,
+				models.NewStatus,
+				models.DepositOrder,
+				10,
+				5,
+				time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
+				time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
+			),
+			[]*models.Order{{
+				OrderId:     1,
+				Status:      models.NewStatus,
+				TXType:      models.DepositOrder,
+				Accrual:     10,
+				UserId:      5,
+				UploadedAt:  time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
+				ProcessedAt: time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
+			}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			require.NoError(t, err)
+			defer db.Close()
+			log := newDevLogger(t)
+
+			repo := orderRepo{db, log}
+
+			sqlQuery := `SELECT order_id, status, tx_type, accrual, user_id, uploaded_at, processed_at
+FROM orders 
+WHERE user_id = \$1 AND tx_type = \$2`
+
+			mock.ExpectQuery(sqlQuery).WithArgs(tt.userId, tt.TXtype).WillReturnRows(tt.rows)
+
+			orders, err := repo.queryOrders(context.Background(), tt.userId, tt.TXtype)
+			require.NoError(t, err)
+			require.Equal(t, orders[0], tt.orders[0])
+
+		})
+	}
+}
