@@ -10,7 +10,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var ctxKey = "loggerCtx"
+type ctxKeyType string
+
+var ctxKey ctxKeyType = "loggerCtx"
 var atomicLevel = zap.NewAtomicLevelAt(zapcore.InfoLevel)
 
 var logger = zap.NewNop()
@@ -21,7 +23,7 @@ func Logger(next http.Handler) http.Handler {
 		rCtx := r.Context()
 
 		t1 := time.Now()
-		reqId := zap.String("reqId", middleware.GetReqID(rCtx))
+		reqID := middleware.GetReqID(rCtx)
 		defer func() {
 			logger.Info(
 				"Served",
@@ -30,19 +32,19 @@ func Logger(next http.Handler) http.Handler {
 				zap.Duration("took", time.Since(t1)),
 				zap.Int("status", ww.Status()),
 				zap.Int("size", ww.BytesWritten()),
-				reqId,
+				zap.String("reqId", string(reqID)),
 			)
 		}()
 
-		ctx := context.WithValue(rCtx, ctxKey, logger.With(reqId))
+		ctx := context.WithValue(rCtx, ctxKey, reqID)
 		next.ServeHTTP(ww, r.WithContext(ctx))
 	}
 	return http.HandlerFunc(fn)
 }
 
 func FromContext(ctx context.Context) *zap.Logger {
-	if logger, ok := ctx.Value(ctxKey).(*zap.Logger); ok {
-		return logger
+	if requestID, ok := ctx.Value(ctxKey).(ctxKeyType); ok {
+		return logger.With(zap.String("reqId", string(requestID)))
 	}
 	return logger
 }
