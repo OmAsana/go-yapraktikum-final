@@ -90,7 +90,7 @@ func TestUserAuth(t *testing.T) {
 	tests := []struct {
 		name    string
 		wantErr bool
-		userId  int
+		userID  int
 		err     Error
 		args
 	}{
@@ -129,9 +129,9 @@ func TestUserAuth(t *testing.T) {
 			columns := []string{"user_id", "password_hash"}
 			var rows *sqlmock.Rows
 			if tt.wantErr {
-				rows = mock.NewRows(columns).AddRow(tt.userId, tt.args.password+"lkjaslkfj")
+				rows = mock.NewRows(columns).AddRow(tt.userID, tt.args.password+"lkjaslkfj")
 			} else {
-				rows = mock.NewRows(columns).AddRow(tt.userId, tt.args.password)
+				rows = mock.NewRows(columns).AddRow(tt.userID, tt.args.password)
 			}
 
 			q.WillReturnRows(rows)
@@ -143,7 +143,7 @@ func TestUserAuth(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			require.Equal(t, tt.userId, id)
+			require.Equal(t, tt.userID, id)
 
 		})
 	}
