@@ -39,6 +39,5 @@ func (s Server) Ping() http.HandlerFunc {
 		writer.WriteHeader(http.StatusOK)
 		writer.Header().Set("Content-Type", "application/text")
 		writer.Write([]byte("pong"))
-		return
 	}
 }

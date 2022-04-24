@@ -13,7 +13,7 @@ import (
 	"github.com/OmAsana/go-yapraktikum-final/pkg/logger"
 )
 
-var testDb = "postgresql://practicum:practicum@localhost:5432"
+//var testDb = "postgresql://practicum:practicum@localhost:5432"
 
 func newDevLogger(t *testing.T) *zap.Logger {
 	t.Helper()
@@ -49,7 +49,7 @@ func TestCreateUser(t *testing.T) {
 		{
 			"duplicate",
 			true,
-			UserAlreadyExists,
+			ErrUserAlreadyExists,
 			args{
 				"stepanar",
 				"some_pass",
@@ -109,7 +109,7 @@ func TestUserAuth(t *testing.T) {
 			"wrong pass",
 			true,
 			-1,
-			UserAuthFailed,
+			ErrUserAuthFailed,
 			args{
 				"stepanar",
 				"somepass",

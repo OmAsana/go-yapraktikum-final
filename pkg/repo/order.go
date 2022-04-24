@@ -28,7 +28,7 @@ func newOrderRepo(db *sql.DB, logger *zap.Logger) *orderRepo {
 
 func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Error {
 	var err error
-	l := u.log.With(zap.Int("order", order.OrderId))
+	l := u.log.With(zap.Int("order", order.OrderID))
 	defer func() {
 		if err != nil {
 			l.Error("error creating order", zap.Error(err))
@@ -38,22 +38,22 @@ func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Erro
 VALUES ($1, $2, $3, $4, $5, $6)`
 
 	res, err := u.db.ExecContext(ctx, sqlStatement,
-		order.OrderId,
+		order.OrderID,
 		models.NewStatus,
 		order.TXType,
 		order.Accrual,
-		order.UserId,
+		order.UserID,
 		time.Now())
 	if err != nil {
 		// duplicate key error
 		if strings.Contains(err.Error(), "SQLSTATE 23505") {
-			return DuplicateOrder
+			return ErrDuplicateOrder
 		}
 	}
 
 	inserts, err := res.RowsAffected()
 	if err != nil {
-		return InternalError
+		return ErrInternalError
 
 	}
 
@@ -61,23 +61,23 @@ VALUES ($1, $2, $3, $4, $5, $6)`
 		// TODO
 		// Implement  zapcore.ObjectMarshaler
 		u.log.Debug("Did not create order", zap.Reflect("order", order))
-		return InternalError
+		return ErrInternalError
 	}
 
 	return nil
 }
 
-func (u *orderRepo) ListOrders(ctx context.Context, userId int) ([]*models.Order, error) {
-	return u.queryOrders(ctx, userId, models.DepositOrder)
+func (u *orderRepo) ListOrders(ctx context.Context, userID int) ([]*models.Order, error) {
+	return u.queryOrders(ctx, userID, models.DepositOrder)
 }
 
-func (u *orderRepo) ListWithdrawals(ctx context.Context, userId int) ([]*models.Order, error) {
-	return u.queryOrders(ctx, userId, models.WithdrawalOrder)
+func (u *orderRepo) ListWithdrawals(ctx context.Context, userID int) ([]*models.Order, error) {
+	return u.queryOrders(ctx, userID, models.WithdrawalOrder)
 }
 
-func (u *orderRepo) queryOrders(ctx context.Context, userId int, orderType models.OrderType) ([]*models.Order, error) {
+func (u *orderRepo) queryOrders(ctx context.Context, userID int, orderType models.OrderType) ([]*models.Order, error) {
 	var err error
-	l := u.log.With(zap.Int("user_id", userId))
+	l := u.log.With(zap.Int("user_id", userID))
 	defer func() {
 		if err != nil {
 			l.Error("error getting user orders", zap.Error(err))
@@ -88,10 +88,15 @@ func (u *orderRepo) queryOrders(ctx context.Context, userId int, orderType model
 FROM orders 
 WHERE user_id = $1 AND tx_type = $2`
 
-	rows, err := u.db.QueryContext(ctx, sqlStatement, userId, orderType)
+	rows, err := u.db.QueryContext(ctx, sqlStatement, userID, orderType)
 	if err != nil {
-		return nil, InternalError
+		return nil, ErrInternalError
 	}
+	err = rows.Err()
+	if err != nil {
+		return nil, ErrInternalError
+	}
+
 	defer rows.Close()
 
 	var orders []*models.Order
@@ -100,11 +105,11 @@ WHERE user_id = $1 AND tx_type = $2`
 		var t sql.NullTime
 
 		err = rows.Scan(
-			&order.OrderId,
+			&order.OrderID,
 			&order.Status,
 			&order.TXType,
 			&order.Accrual,
-			&order.UserId,
+			&order.UserID,
 			&order.UploadedAt,
 			&t,
 		)
@@ -123,9 +128,9 @@ WHERE user_id = $1 AND tx_type = $2`
 	return orders, nil
 }
 
-func (u *orderRepo) CurrentBalance(ctx context.Context, userId int) (int, Error) {
+func (u *orderRepo) CurrentBalance(ctx context.Context, userID int) (int, Error) {
 	var err error
-	l := u.log.With(zap.Int("user_id", userId))
+	l := u.log.With(zap.Int("user_id", userID))
 	defer func() {
 		if err != nil {
 			l.Error("error getting user balance", zap.Error(err))
@@ -135,9 +140,9 @@ func (u *orderRepo) CurrentBalance(ctx context.Context, userId int) (int, Error)
 	sqlStatement := `SELECT COALESCE(SUM(accrual),0) AS total FROM orders WHERE user_id = $1`
 
 	var sum int
-	err = u.db.QueryRowContext(ctx, sqlStatement, userId).Scan(&sum)
+	err = u.db.QueryRowContext(ctx, sqlStatement, userID).Scan(&sum)
 	if err != nil {
-		return -1, InternalError
+		return -1, ErrInternalError
 	}
 	return sum, nil
 }

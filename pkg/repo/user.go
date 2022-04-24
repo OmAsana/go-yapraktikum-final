@@ -38,16 +38,16 @@ func (u *userRepo) Create(ctx context.Context, username string, pwdHash string) 
 	now := time.Now()
 	prepareContext, err := u.db.PrepareContext(ctx, "INSERT INTO users(username, password_hash, created_at) VALUES($1, $2, $3)")
 	if err != nil {
-		return InternalError
+		return ErrInternalError
 	}
 	_, err = prepareContext.ExecContext(ctx, username, pwdHash, now)
 	if err != nil {
 		// duplicate key error
 		if strings.Contains(err.Error(), "SQLSTATE 23505") {
-			return UserAlreadyExists
+			return ErrUserAlreadyExists
 		}
 
-		return InternalError
+		return ErrInternalError
 	}
 	return nil
 }
@@ -69,14 +69,14 @@ func (u *userRepo) Authenticate(ctx context.Context, username string, pwdHash st
 	switch {
 	case err == sql.ErrNoRows:
 		u.log.Error("user does not exist")
-		return -1, UserAuthFailed
+		return -1, ErrUserAuthFailed
 	case err != nil:
-		return -1, InternalError
+		return -1, ErrInternalError
 	}
 
 	if hash != pwdHash {
 		u.log.Error("wrong password")
-		return -1, UserAuthFailed
+		return -1, ErrUserAuthFailed
 	}
 
 	return id, nil

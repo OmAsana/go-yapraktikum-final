@@ -33,7 +33,7 @@ func (c *ConfigStruct) validate() error {
 		return fmt.Errorf("database uri can not be empty")
 	}
 	if c.RunAddress == "" {
-		return fmt.Errorf("Run address uri can not be empty")
+		return fmt.Errorf("run address uri can not be empty")
 	}
 
 	if c.AccrualSystemAddress == "" {

@@ -28,23 +28,23 @@ func Test_orderRepo_CreateNewOrder(t *testing.T) {
 			false,
 			nil,
 			models.Order{
-				OrderId: 123,
+				OrderID: 123,
 				Status:  "someStatus",
 				TXType:  "someType",
 				Accrual: 0,
-				UserId:  1,
+				UserID:  1,
 			},
 		},
 		{
 			"dup order",
 			true,
-			DuplicateOrder,
+			ErrDuplicateOrder,
 			models.Order{
-				OrderId: 123,
+				OrderID: 123,
 				Status:  "NEW",
 				TXType:  "someType",
 				Accrual: 0,
-				UserId:  1,
+				UserID:  1,
 			},
 		},
 	}
@@ -58,11 +58,11 @@ func Test_orderRepo_CreateNewOrder(t *testing.T) {
 			q := mock.ExpectExec(`INSERT INTO orders \(order_id, status, tx_type, accrual, user_id, uploaded_at\) 
 VALUES \(\$1, \$2, \$3, \$4, \$5, \$6\)`).
 				WithArgs(
-					tt.order.OrderId,
+					tt.order.OrderID,
 					models.NewStatus,
 					tt.order.TXType,
 					tt.order.Accrual,
-					tt.order.UserId,
+					tt.order.UserID,
 					sqlmock.AnyArg(),
 				)
 
@@ -95,13 +95,13 @@ func Test_orderRepo_CurrentBalance(t *testing.T) {
 
 	repo := orderRepo{db, log}
 
-	uId := 3
+	uID := 3
 	sum := 20
-	q := mock.ExpectQuery(`SELECT COALESCE\(SUM\(accrual\),0\) AS total FROM orders WHERE user_id = \$1`).WithArgs(uId)
+	q := mock.ExpectQuery(`SELECT COALESCE\(SUM\(accrual\),0\) AS total FROM orders WHERE user_id = \$1`).WithArgs(uID)
 	q.WillReturnRows(mock.NewRows([]string{"total"}).AddRow(sum))
 	q.WillReturnError(nil)
 
-	balance, err := repo.CurrentBalance(context.Background(), uId)
+	balance, err := repo.CurrentBalance(context.Background(), uID)
 	require.NoError(t, err)
 	require.Equal(t, sum, balance)
 }
@@ -121,7 +121,7 @@ func Test_orderRepo_queryOrders(t *testing.T) {
 		TXtype  models.OrderType
 		wantErr bool
 		err     Error
-		userId  int
+		userID  int
 		rows    *sqlmock.Rows
 		orders  []*models.Order
 	}{
@@ -141,11 +141,11 @@ func Test_orderRepo_queryOrders(t *testing.T) {
 				time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
 			),
 			[]*models.Order{{
-				OrderId:     1,
+				OrderID:     1,
 				Status:      models.NewStatus,
 				TXType:      models.WithdrawalOrder,
 				Accrual:     10,
-				UserId:      5,
+				UserID:      5,
 				UploadedAt:  time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
 				ProcessedAt: time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
 			}},
@@ -166,11 +166,11 @@ func Test_orderRepo_queryOrders(t *testing.T) {
 				time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
 			),
 			[]*models.Order{{
-				OrderId:     1,
+				OrderID:     1,
 				Status:      models.NewStatus,
 				TXType:      models.DepositOrder,
 				Accrual:     10,
-				UserId:      5,
+				UserID:      5,
 				UploadedAt:  time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
 				ProcessedAt: time.Date(1988, time.May, 10, 9, 0, 0, 0, time.UTC),
 			}},
@@ -190,9 +190,9 @@ func Test_orderRepo_queryOrders(t *testing.T) {
 FROM orders 
 WHERE user_id = \$1 AND tx_type = \$2`
 
-			mock.ExpectQuery(sqlQuery).WithArgs(tt.userId, tt.TXtype).WillReturnRows(tt.rows)
+			mock.ExpectQuery(sqlQuery).WithArgs(tt.userID, tt.TXtype).WillReturnRows(tt.rows)
 
-			orders, err := repo.queryOrders(context.Background(), tt.userId, tt.TXtype)
+			orders, err := repo.queryOrders(context.Background(), tt.userID, tt.TXtype)
 			require.NoError(t, err)
 			require.Equal(t, orders[0], tt.orders[0])
 

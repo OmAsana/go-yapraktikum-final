@@ -19,11 +19,11 @@ var (
 )
 
 type Order struct {
-	OrderId     int
+	OrderID     int
 	Status      OrderStatus
 	TXType      OrderType
 	Accrual     int
-	UserId      int
+	UserID      int
 	UploadedAt  time.Time
 	ProcessedAt time.Time
 }
