@@ -69,7 +69,7 @@ func (u *userRepo) Authenticate(ctx context.Context, username string, pwdHash st
 	switch {
 	case err == sql.ErrNoRows:
 		u.log.Error("user does not exist")
-		return -1, ErrUserAuthFailed
+		return -1, ErrUserNotFound
 	case err != nil:
 		return -1, ErrInternalError
 	}
