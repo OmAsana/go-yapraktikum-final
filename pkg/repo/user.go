@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 
 	logr "github.com/OmAsana/go-yapraktikum-final/pkg/logger"
 )
@@ -25,9 +26,9 @@ func newUserRepo(db *sql.DB, logger *zap.Logger) *userRepo {
 	return &userRepo{db: db, log: logger}
 }
 
-func (u *userRepo) Create(ctx context.Context, username string, pwdHash string) Error {
+func (u *userRepo) Create(ctx context.Context, username string, password string) (int, Error) {
 	var err error
-	l := u.log.With(zap.String("username", username))
+	l := logr.FromContext(ctx)
 	defer func() {
 		if err != nil {
 			l.Error("could not create user", zap.Error(err))
@@ -35,26 +36,34 @@ func (u *userRepo) Create(ctx context.Context, username string, pwdHash string) 
 	}()
 
 	l.Info("creating user")
-	now := time.Now()
-	prepareContext, err := u.db.PrepareContext(ctx, "INSERT INTO users(username, password_hash, created_at) VALUES($1, $2, $3)")
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 8)
 	if err != nil {
-		return ErrInternalError
+		return -1, ErrInternalError
 	}
-	_, err = prepareContext.ExecContext(ctx, username, pwdHash, now)
+
+	now := time.Now()
+	prepareContext, err := u.db.PrepareContext(ctx, "INSERT INTO users(username, password_hash, created_at) VALUES($1, $2, $3) RETURNING user_id")
+	if err != nil {
+		return -1, ErrInternalError
+	}
+
+	var id int
+	err = prepareContext.QueryRowContext(ctx, username, string(hash), now).Scan(&id)
 	if err != nil {
 		// duplicate key error
 		if strings.Contains(err.Error(), "SQLSTATE 23505") {
-			return ErrUserAlreadyExists
+			return -1, ErrUserAlreadyExists
 		}
 
-		return ErrInternalError
+		return -1, ErrInternalError
 	}
-	return nil
+	return id, nil
 }
 
-func (u *userRepo) Authenticate(ctx context.Context, username string, pwdHash string) (int, Error) {
+func (u *userRepo) Authenticate(ctx context.Context, username string, password string) (int, Error) {
 	var err error
-	l := u.log.With(zap.String("username", username))
+	l := logr.FromContext(ctx)
 	defer func() {
 		if err != nil {
 			l.Error("could not authenticate user", zap.Error(err))
@@ -74,8 +83,8 @@ func (u *userRepo) Authenticate(ctx context.Context, username string, pwdHash st
 		return -1, ErrInternalError
 	}
 
-	if hash != pwdHash {
-		u.log.Error("wrong password")
+	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	if err != nil {
 		return -1, ErrUserAuthFailed
 	}
 

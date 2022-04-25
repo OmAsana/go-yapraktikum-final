@@ -28,7 +28,7 @@ func newOrderRepo(db *sql.DB, logger *zap.Logger) *orderRepo {
 
 func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Error {
 	var err error
-	l := u.log.With(zap.Int("order", order.OrderID))
+	l := logr.FromContext(ctx)
 	defer func() {
 		if err != nil {
 			l.Error("error creating order", zap.Error(err))
@@ -77,7 +77,7 @@ func (u *orderRepo) ListWithdrawals(ctx context.Context, userID int) ([]*models.
 
 func (u *orderRepo) queryOrders(ctx context.Context, userID int, orderType models.OrderType) ([]*models.Order, error) {
 	var err error
-	l := u.log.With(zap.Int("user_id", userID))
+	l := logr.FromContext(ctx)
 	defer func() {
 		if err != nil {
 			l.Error("error getting user orders", zap.Error(err))
@@ -130,7 +130,7 @@ WHERE user_id = $1 AND tx_type = $2`
 
 func (u *orderRepo) CurrentBalance(ctx context.Context, userID int) (int, Error) {
 	var err error
-	l := u.log.With(zap.Int("user_id", userID))
+	l := logr.FromContext(ctx)
 	defer func() {
 		if err != nil {
 			l.Error("error getting user balance", zap.Error(err))

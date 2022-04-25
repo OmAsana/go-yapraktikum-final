@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/OmAsana/go-yapraktikum-final/pkg/logger"
 )
@@ -62,21 +63,26 @@ func TestCreateUser(t *testing.T) {
 			db, mock, err := sqlmock.New()
 			require.NoError(t, err)
 			defer db.Close()
-			sqlQuery := `INSERT INTO users\(username, password_hash, created_at\) VALUES\(\$1, \$2, \$3\)`
+			sqlQuery := `INSERT INTO users\(username, password_hash, created_at\) VALUES\(\$1, \$2, \$3\) RETURNING user_id`
 			q := mock.ExpectPrepare(sqlQuery).
-				ExpectExec().
-				WithArgs(tt.args.username, tt.password, sqlmock.AnyArg())
+				ExpectQuery().
+				WithArgs(tt.args.username, sqlmock.AnyArg(), sqlmock.AnyArg())
 
 			if tt.wantErr {
 				q.WillReturnError(errors.New("SQLSTATE 23505"))
-				q.WillReturnResult(sqlmock.NewResult(123, 123))
+				//q.WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow())
 			} else {
 				q.WillReturnError(nil)
-				q.WillReturnResult(sqlmock.NewResult(123, 123))
+				q.WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(1))
 			}
 			userRepo := newUserRepo(db, log)
-			err = userRepo.Create(context.TODO(), tt.args.username, tt.args.password)
+			id, err := userRepo.Create(context.TODO(), tt.args.username, tt.args.password)
 			assert.ErrorIs(t, err, tt.err)
+			if tt.wantErr {
+				require.Equal(t, id, -1)
+			} else {
+				require.Equal(t, id, 1)
+			}
 		})
 	}
 }
@@ -129,9 +135,9 @@ func TestUserAuth(t *testing.T) {
 			columns := []string{"user_id", "password_hash"}
 			var rows *sqlmock.Rows
 			if tt.wantErr {
-				rows = mock.NewRows(columns).AddRow(tt.userID, tt.args.password+"lkjaslkfj")
+				rows = mock.NewRows(columns).AddRow(tt.userID, helpGenerateHash(t, tt.args.password+"some_random_str"))
 			} else {
-				rows = mock.NewRows(columns).AddRow(tt.userID, tt.args.password)
+				rows = mock.NewRows(columns).AddRow(tt.userID, helpGenerateHash(t, tt.args.password))
 			}
 
 			q.WillReturnRows(rows)
@@ -147,4 +153,11 @@ func TestUserAuth(t *testing.T) {
 
 		})
 	}
+}
+
+func helpGenerateHash(t *testing.T, password string) string {
+	t.Helper()
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 8)
+	require.NoError(t, err)
+	return string(hash)
 }

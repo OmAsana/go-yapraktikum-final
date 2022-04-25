@@ -20,8 +20,8 @@ var (
 )
 
 type User interface {
-	Create(ctx context.Context, username string, pwdHash string) Error
-	Authenticate(ctx context.Context, username string, pwdHash string) (int, Error)
+	Create(ctx context.Context, username string, password string) (int, Error)
+	Authenticate(ctx context.Context, username string, password string) (int, Error)
 }
 type Order interface {
 	CreateNewOrder(ctx context.Context, order models.Order) Error
