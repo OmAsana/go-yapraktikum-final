@@ -10,7 +10,9 @@ type Credentials struct {
 	Password string
 }
 
-var UserCTXKey = "ctxUserID"
+type CtxKey string
+
+var UserCTXKey CtxKey = "ctxUserID"
 
 func UserIDFromContext(ctx context.Context) (int, error) {
 	userID, ok := ctx.Value(UserCTXKey).(int)
