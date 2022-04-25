@@ -3,7 +3,7 @@ CREATE TABLE if not exists public.users
 (
     user_id       INT GENERATED ALWAYS AS IDENTITY,
     username      VARCHAR(50) UNIQUE NOT NULL,
-    password_hash VARCHAR(50)        NOT NULL,
+    password_hash TEXT        NOT NULL,
     created_at    TIMESTAMP          NOT NULL,
     last_login_at TIMESTAMP,
     PRIMARY KEY (user_id)
