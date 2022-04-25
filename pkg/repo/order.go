@@ -28,9 +28,9 @@ func newOrderRepo(db *sql.DB, logger *zap.Logger) *orderRepo {
 func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Error {
 	l := u.log.With(zap.Int("order", order.OrderID))
 
-	findOrderSql := `SELECT user_id FROM orders WHERE order_id = $1`
+	findOrderSQL := `SELECT user_id FROM orders WHERE order_id = $1`
 	var userID int
-	err := u.db.QueryRowContext(ctx, findOrderSql, order.OrderID).Scan(&userID)
+	err := u.db.QueryRowContext(ctx, findOrderSQL, order.OrderID).Scan(&userID)
 	switch {
 	// Create new order if it does not exist in the db
 	case err == sql.ErrNoRows:
@@ -68,11 +68,12 @@ func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Erro
 	}
 
 	if userID == order.UserID {
+		l.Info("Order already uploaded by current user")
 		return ErrOrderAlreadyUploadedByCurrentUser
 	} else {
+		l.Info("Order already uploaded by another user")
 		return ErrOrderCreatedByAnotherUser
 	}
-
 }
 
 func (u *orderRepo) ListOrders(ctx context.Context, userID int) ([]*models.Order, error) {
