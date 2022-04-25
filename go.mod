@@ -11,6 +11,7 @@ require (
 	github.com/pressly/goose/v3 v3.5.3
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.0
+	github.com/theplant/luhn v0.0.0-20170224032821-81a1a381387a
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
