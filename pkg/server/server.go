@@ -90,7 +90,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 
 func validateRequest(r *http.Request) ([]byte, error) {
 	if !Contains(r.Header.Values("Content-Type"), "application/json") {
-		return nil, errors.New(fmt.Sprintf("wrong content type: %s", r.Header.Values("Content-Type")))
+		return nil, fmt.Errorf("wrong content type: %s", r.Header.Values("Content-Type"))
 	}
 
 	body, err := ioutil.ReadAll(r.Body)
