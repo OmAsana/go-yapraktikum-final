@@ -27,3 +27,13 @@ type Order struct {
 	UploadedAt  time.Time
 	ProcessedAt time.Time
 }
+
+func NewOrder(orderID int, userID int) Order {
+	return Order{
+		OrderID: orderID,
+		Status:  NewStatus,
+		TXType:  DepositOrder,
+		Accrual: 0,
+		UserID:  userID,
+	}
+}

@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/theplant/luhn"
 	"go.uber.org/zap"
 
 	"github.com/OmAsana/go-yapraktikum-final/pkg/controllers"
 	"github.com/OmAsana/go-yapraktikum-final/pkg/jwt"
 	logger2 "github.com/OmAsana/go-yapraktikum-final/pkg/logger"
+	"github.com/OmAsana/go-yapraktikum-final/pkg/models"
 	"github.com/OmAsana/go-yapraktikum-final/pkg/repo"
 )
 
@@ -159,11 +162,50 @@ func (s *Server) createOrder(w http.ResponseWriter, r *http.Request) {
 	userID, err := controllers.UserIDFromContext(r.Context())
 	if err != nil {
 		log.Error("orders", zap.Error(err))
-
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println(userID)
+	if !Contains(r.Header.Values("Content-Type"), "text/plain") {
+		log.Error("Wrong content type")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Error("Error reading body", zap.Error(err))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	orderID, err := strconv.Atoi(string(body))
+	if err != nil {
+		fmt.Println(err)
+		log.Error("Error converting body to int", zap.Error(err))
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	if !luhn.Valid(orderID) {
+		log.Error("Invalid order id", zap.Int("order_id", orderID))
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+
+	err = s.orderRepo.CreateNewOrder(r.Context(), models.NewOrder(orderID, userID))
+	switch {
+	case err == nil:
+		w.WriteHeader(http.StatusAccepted)
+		return
+	case errors.Is(err, repo.ErrOrderAlreadyUploadedByCurrentUser):
+		w.WriteHeader(http.StatusOK)
+		return
+	case errors.Is(err, repo.ErrOrderCreatedByAnotherUser):
+		w.WriteHeader(http.StatusConflict)
+		return
+	case errors.Is(err, repo.ErrInternalError):
+		log.Error("Error creating order", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 func Contains(list []string, value string) bool {
