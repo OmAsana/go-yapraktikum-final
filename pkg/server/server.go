@@ -41,6 +41,11 @@ func NewServer(logger *zap.Logger, userRepo repo.User, orderRepo repo.Order, sal
 	srv.Route("/api/user", func(r chi.Router) {
 		r.Post("/register", srv.register)
 		r.Post("/login", srv.login)
+		r.Group(func(r chi.Router) {
+			r.Use(srv.jwtAuth.CheckAuthentication)
+			r.Post("/orders", srv.createOrder)
+
+		})
 	})
 
 	srv.Get("/ping", srv.Ping())
@@ -60,7 +65,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 	var creds controllers.Credentials
 	err = json.Unmarshal(body, &creds)
 	if err != nil {
-		log.Error("err decoding user", zap.Error(err), zap.ByteString("body", body))
+		log.Error("Error decoding user", zap.Error(err), zap.ByteString("body", body))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -69,7 +74,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 	userID, err := s.userRepo.Create(r.Context(), creds.Login, creds.Password)
 	if err != nil {
 		if errors.Is(err, repo.ErrUserAlreadyExists) {
-			log.Error("user already exists", zap.String("user", creds.Login))
+			log.Error("User already exists", zap.String("user", creds.Login))
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
@@ -86,6 +91,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.SetCookie(w, claim)
+	w.WriteHeader(http.StatusOK)
 }
 
 func validateRequest(r *http.Request) ([]byte, error) {
@@ -146,6 +152,18 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, claim)
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) createOrder(w http.ResponseWriter, r *http.Request) {
+	log := logger2.FromContext(r.Context())
+	userID, err := controllers.UserIDFromContext(r.Context())
+	if err != nil {
+		log.Error("orders", zap.Error(err))
+
+		return
+	}
+
+	fmt.Println(userID)
 }
 
 func Contains(list []string, value string) bool {
