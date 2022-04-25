@@ -65,7 +65,6 @@ func Test_orderRepo_CreateNewOrder(t *testing.T) {
 		require.NoError(t, err)
 		err = repo.CreateNewOrder(context.Background(), order)
 		require.ErrorIs(t, err, ErrOrderAlreadyUploadedByCurrentUser)
-		//require.NoError(t, err)
 	})
 
 	t.Run("insert already exists for another user", func(t *testing.T) {
