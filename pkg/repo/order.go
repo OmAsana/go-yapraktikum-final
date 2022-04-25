@@ -26,45 +26,95 @@ func newOrderRepo(db *sql.DB, logger *zap.Logger) *orderRepo {
 	return &orderRepo{db: db, log: logger}
 }
 
+//func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Error {
+//	var err error
+//	l := u.log.With(zap.Int("order", order.OrderID))
+//	defer func() {
+//		if err != nil {
+//			l.Error("error creating order", zap.Error(err))
+//		}
+//	}()
+//	sqlStatement := `INSERT INTO orders (order_id, status, tx_type, accrual, user_id, uploaded_at)
+//VALUES ($1, $2, $3, $4, $5, $6)`
+//
+//	res, err := u.db.ExecContext(ctx, sqlStatement,
+//		order.OrderID,
+//		models.NewStatus,
+//		order.TXType,
+//		order.Accrual,
+//		order.UserID,
+//		time.Now())
+//	if err != nil {
+//		// duplicate key error
+//		if strings.Contains(err.Error(), "SQLSTATE 23505") {
+//			return ErrDuplicateOrder
+//		}
+//	}
+//
+//	inserts, err := res.RowsAffected()
+//	if err != nil {
+//		return ErrInternalError
+//
+//	}
+//
+//	if inserts != 1 {
+//		// TODO
+//		// Implement  zapcore.ObjectMarshaler
+//		u.log.Debug("Did not create order", zap.Reflect("order", order))
+//		return ErrInternalError
+//	}
+//
+//	return nil
+//}
+
 func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Error {
-	var err error
 	l := u.log.With(zap.Int("order", order.OrderID))
-	defer func() {
+
+	findOrderSql := `SELECT user_id FROM orders WHERE order_id = $1`
+	var userID int
+	err := u.db.QueryRowContext(ctx, findOrderSql, order.OrderID).Scan(&userID)
+	switch {
+	// Create new order if it does not exist in the db
+	case err == sql.ErrNoRows:
+		sqlStatement := `INSERT INTO orders (order_id, status, tx_type, accrual, user_id, uploaded_at)
+	VALUES ($1, $2, $3, $4, $5, $6)`
+
+		res, err := u.db.ExecContext(ctx, sqlStatement,
+			order.OrderID,
+			models.NewStatus,
+			order.TXType,
+			order.Accrual,
+			order.UserID,
+			time.Now())
 		if err != nil {
-			l.Error("error creating order", zap.Error(err))
+			// duplicate key error
+			if strings.Contains(err.Error(), "SQLSTATE 23505") {
+				return ErrDuplicateOrder
+			}
 		}
-	}()
-	sqlStatement := `INSERT INTO orders (order_id, status, tx_type, accrual, user_id, uploaded_at) 
-VALUES ($1, $2, $3, $4, $5, $6)`
 
-	res, err := u.db.ExecContext(ctx, sqlStatement,
-		order.OrderID,
-		models.NewStatus,
-		order.TXType,
-		order.Accrual,
-		order.UserID,
-		time.Now())
-	if err != nil {
-		// duplicate key error
-		if strings.Contains(err.Error(), "SQLSTATE 23505") {
-			return ErrDuplicateOrder
+		inserts, err := res.RowsAffected()
+		if err != nil {
+			return ErrInternalError
 		}
-	}
 
-	inserts, err := res.RowsAffected()
-	if err != nil {
-		return ErrInternalError
-
-	}
-
-	if inserts != 1 {
-		// TODO
-		// Implement  zapcore.ObjectMarshaler
-		u.log.Debug("Did not create order", zap.Reflect("order", order))
+		if inserts != 1 {
+			// TODO
+			// Implement  zapcore.ObjectMarshaler
+			l.Debug("Did not create order", zap.Reflect("order", order))
+			return ErrInternalError
+		}
+		return nil
+	case err != nil:
 		return ErrInternalError
 	}
 
-	return nil
+	if userID == order.UserID {
+		return ErrOrderAlreadyUploadedByCurrentUser
+	} else {
+		return ErrOrderCreatedByAnotherUser
+	}
+
 }
 
 func (u *orderRepo) ListOrders(ctx context.Context, userID int) ([]*models.Order, error) {

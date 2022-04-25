@@ -14,7 +14,9 @@ var (
 	ErrUserAuthFailed    Error = errors.New("user authentication failed")
 	ErrUserAlreadyExists Error = errors.New("duplicate user name")
 
-	ErrDuplicateOrder Error = errors.New("duplicate order")
+	ErrDuplicateOrder                    Error = errors.New("duplicate order")
+	ErrOrderAlreadyUploadedByCurrentUser Error = errors.New("order already exist for this user")
+	ErrOrderCreatedByAnotherUser         Error = errors.New("order already exist for another user")
 
 	ErrInternalError Error = errors.New("internal error")
 )
