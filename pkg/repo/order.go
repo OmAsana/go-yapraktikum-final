@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"database/sql"
-	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -46,14 +45,13 @@ func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Erro
 			order.UserID,
 			time.Now())
 		if err != nil {
-			// duplicate key error
-			if strings.Contains(err.Error(), "SQLSTATE 23505") {
-				return ErrDuplicateOrder
-			}
+			l.Error("Error inserting order", zap.Error(err))
+			return ErrInternalError
 		}
 
 		inserts, err := res.RowsAffected()
 		if err != nil {
+			l.Error("Error creating order", zap.Error(err))
 			return ErrInternalError
 		}
 
@@ -65,6 +63,7 @@ func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Erro
 		}
 		return nil
 	case err != nil:
+		l.Error("Error creating order", zap.Error(err))
 		return ErrInternalError
 	}
 
