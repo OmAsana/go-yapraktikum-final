@@ -2,7 +2,7 @@ package repo
 
 import (
 	"context"
-	"errors"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -13,78 +13,74 @@ import (
 	"github.com/OmAsana/go-yapraktikum-final/pkg/models"
 )
 
-//var testDb = "postgresql://practicum:practicum@localhost:5432"
+var testDb = "postgresql://practicum:practicum@localhost:5432"
 
 func Test_orderRepo_CreateNewOrder(t *testing.T) {
+	selectSql := `SELECT user_id FROM orders WHERE order_id = \$1`
+	insertSql := `INSERT INTO orders \(order_id, status, tx_type, accrual, user_id, uploaded_at\)
+		VALUES \(\$1, \$2, \$3, \$4, \$5, \$6\)`
 
-	tests := []struct {
-		name    string
-		wantErr bool
-		err     Error
-		order   models.Order
-	}{
-		{
-			"success",
-			false,
-			nil,
-			models.Order{
-				OrderID: 123,
-				Status:  "someStatus",
-				TXType:  "someType",
-				Accrual: 0,
-				UserID:  1,
-			},
-		},
-		{
-			"dup order",
-			true,
-			ErrDuplicateOrder,
-			models.Order{
-				OrderID: 123,
-				Status:  "NEW",
-				TXType:  "someType",
-				Accrual: 0,
-				UserID:  1,
-			},
-		},
+	order := models.Order{
+		OrderID: 12345,
+		Status:  "someStatus",
+		TXType:  "someType",
+		Accrual: 0,
+		UserID:  8,
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			db, mock, err := sqlmock.New()
-			require.NoError(t, err)
-			defer db.Close()
+	t.Run("insert single", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
+		s := mock.ExpectQuery(selectSql).WithArgs(order.OrderID)
+		s.WillReturnError(sql.ErrNoRows)
 
-			q := mock.ExpectExec(`INSERT INTO orders \(order_id, status, tx_type, accrual, user_id, uploaded_at\) 
-VALUES \(\$1, \$2, \$3, \$4, \$5, \$6\)`).
-				WithArgs(
-					tt.order.OrderID,
-					models.NewStatus,
-					tt.order.TXType,
-					tt.order.Accrual,
-					tt.order.UserID,
-					sqlmock.AnyArg(),
-				)
+		q := mock.ExpectExec(insertSql).
+			WithArgs(
+				order.OrderID,
+				models.NewStatus,
+				order.TXType,
+				order.Accrual,
+				order.UserID,
+				sqlmock.AnyArg(),
+			)
+		q.WillReturnError(nil)
+		q.WillReturnResult(sqlmock.NewResult(123, 1))
 
-			if tt.wantErr {
-				q.WillReturnError(errors.New("SQLSTATE 23505"))
-				q.WillReturnResult(sqlmock.NewResult(123, 0))
-			} else {
-				q.WillReturnError(nil)
-				q.WillReturnResult(sqlmock.NewResult(123, 1))
-			}
+		repo, err := OrderRepo(db, newDevLogger(t))
+		require.NoError(t, err)
+		err = repo.CreateNewOrder(context.Background(), order)
+		require.NoError(t, err)
+	})
 
-			log := newDevLogger(t)
-			repo := orderRepo{db, log}
-			err = repo.CreateNewOrder(context.Background(), tt.order)
-			if tt.wantErr {
-				require.ErrorIs(t, err, tt.err)
-			} else {
-				require.NoError(t, err)
-			}
+	t.Run("insert duplicate for current user", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
+		s := mock.ExpectQuery(selectSql).WithArgs(order.OrderID)
+		s.WillReturnError(nil)
+		s.WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(order.UserID))
 
-		})
-	}
+		repo, err := OrderRepo(db, newDevLogger(t))
+		require.NoError(t, err)
+		err = repo.CreateNewOrder(context.Background(), order)
+		require.ErrorIs(t, err, ErrOrderAlreadyUploadedByCurrentUser)
+		//require.NoError(t, err)
+	})
+
+	t.Run("insert already exists for another user", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
+		s := mock.ExpectQuery(selectSql).WithArgs(order.OrderID)
+		s.WillReturnError(nil)
+		s.WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(1235))
+
+		repo, err := OrderRepo(db, newDevLogger(t))
+		require.NoError(t, err)
+		err = repo.CreateNewOrder(context.Background(), order)
+		require.ErrorIs(t, err, ErrOrderCreatedByAnotherUser)
+	})
 }
 
 func Test_orderRepo_CurrentBalance(t *testing.T) {
