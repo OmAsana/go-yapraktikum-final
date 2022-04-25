@@ -5,12 +5,14 @@ go 1.18
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/caarlos0/env/v6 v6.9.1
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/jackc/pgx/v4 v4.15.0
 	github.com/pressly/goose/v3 v3.5.3
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.21.0
+	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
 
@@ -29,7 +31,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	golang.org/x/crypto v0.0.0-20220210151621-f4118a5b28e2 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
