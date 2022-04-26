@@ -246,7 +246,6 @@ func (s *Server) getOrder(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(o); err != nil {
 		log.Error("Error encoding orders", zap.Error(err))
 	}
-	return
 }
 
 func Contains(list []string, value string) bool {
