@@ -18,6 +18,80 @@ type orderRepo struct {
 	log *zap.Logger
 }
 
+func (u *orderRepo) UpdateOrder(ctx context.Context, order models.Order) Error {
+	l := logr.FromContext(ctx)
+
+	l.Info("blah")
+	sqlStatement := `UPDATE orders SET status = $1, accrual = $2, processed_at = $3 WHERE order_id = ($4)`
+	_, err := u.db.ExecContext(ctx, sqlStatement, order.Status, order.Accrual, order.ProcessedAt, order.OrderID)
+	if err != nil {
+		l.Error("Error updating order", zap.Error(err), zap.Any("order", order))
+		return err
+	}
+
+	return nil
+}
+
+func (u *orderRepo) ListUnprocessedOrders(ctx context.Context, limit, offset int) ([]*models.Order, Error) {
+	l := logr.FromContext(ctx)
+
+	sqlStatement := `SELECT order_id, status, tx_type, accrual, user_id, uploaded_at, processed_at
+FROM orders 
+WHERE tx_type = $1 AND status not in ($2, $3) LIMIT $4 OFFSET $5`
+
+	rows, err := u.db.QueryContext(ctx, sqlStatement,
+		models.DepositOrder,
+		models.InvalidStatus,
+		models.ProcessedStatus,
+		limit,
+		offset)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return []*models.Order{}, nil
+		}
+
+		l.Error("Error querying for orders", zap.Error(err))
+		return nil, ErrInternalError
+	}
+	err = rows.Err()
+	if err != nil {
+		l.Error("Error querying for orders", zap.Error(err))
+		return nil, ErrInternalError
+	}
+
+	defer rows.Close()
+
+	var orders []*models.Order
+	for rows.Next() {
+		var order models.Order
+		var t sql.NullTime
+
+		err = rows.Scan(
+			&order.OrderID,
+			&order.Status,
+			&order.TXType,
+			&order.Accrual,
+			&order.UserID,
+			&order.UploadedAt,
+			&t,
+		)
+
+		if t.Valid {
+			order.ProcessedAt = t.Time
+		}
+
+		if err != nil {
+			l.Error("Error scanning orders into object", zap.Error(err))
+			return nil, ErrInternalError
+		}
+
+		orders = append(orders, &order)
+	}
+
+	return orders, nil
+}
+
 func newOrderRepo(db *sql.DB, logger *zap.Logger) *orderRepo {
 	if logger == nil {
 		logger = logr.NewNoop()
@@ -26,7 +100,7 @@ func newOrderRepo(db *sql.DB, logger *zap.Logger) *orderRepo {
 }
 
 func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Error {
-	l := u.log.With(zap.Int("order", order.OrderID))
+	l := logr.FromContext(ctx)
 
 	findOrderSQL := `SELECT user_id FROM orders WHERE order_id = $1`
 	var userID int
@@ -76,15 +150,15 @@ func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Erro
 	}
 }
 
-func (u *orderRepo) ListOrders(ctx context.Context, userID int) ([]*models.Order, error) {
+func (u *orderRepo) ListOrders(ctx context.Context, userID int) ([]*models.Order, Error) {
 	return u.queryOrders(ctx, userID, models.DepositOrder)
 }
 
-func (u *orderRepo) ListWithdrawals(ctx context.Context, userID int) ([]*models.Order, error) {
+func (u *orderRepo) ListWithdrawals(ctx context.Context, userID int) ([]*models.Order, Error) {
 	return u.queryOrders(ctx, userID, models.WithdrawalOrder)
 }
 
-func (u *orderRepo) queryOrders(ctx context.Context, userID int, orderType models.OrderType) ([]*models.Order, error) {
+func (u *orderRepo) queryOrders(ctx context.Context, userID int, orderType models.OrderType) ([]*models.Order, Error) {
 	var err error
 	l := logr.FromContext(ctx)
 	defer func() {
@@ -128,7 +202,7 @@ WHERE user_id = $1 AND tx_type = $2`
 		}
 
 		if err != nil {
-			return nil, err
+			return nil, ErrInternalError
 		}
 
 		orders = append(orders, &order)

@@ -14,7 +14,6 @@ var (
 	ErrUserAuthFailed    Error = errors.New("user authentication failed")
 	ErrUserAlreadyExists Error = errors.New("duplicate user name")
 
-	ErrDuplicateOrder                    Error = errors.New("duplicate order")
 	ErrOrderAlreadyUploadedByCurrentUser Error = errors.New("order already exist for this user")
 	ErrOrderCreatedByAnotherUser         Error = errors.New("order already exist for another user")
 
@@ -27,7 +26,10 @@ type User interface {
 }
 type Order interface {
 	CreateNewOrder(ctx context.Context, order models.Order) Error
-	ListOrders(ctx context.Context, userID int) ([]*models.Order, error)
-	ListWithdrawals(ctx context.Context, userID int) ([]*models.Order, error)
+	ListOrders(ctx context.Context, userID int) ([]*models.Order, Error)
+	ListWithdrawals(ctx context.Context, userID int) ([]*models.Order, Error)
 	CurrentBalance(ctx context.Context, userID int) (int, Error)
+
+	ListUnprocessedOrders(ctx context.Context, limit, offset int) ([]*models.Order, Error)
+	UpdateOrder(ctx context.Context, order models.Order) Error
 }
