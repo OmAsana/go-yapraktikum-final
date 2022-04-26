@@ -15,6 +15,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/OmAsana/go-yapraktikum-final/migrations"
+	"github.com/OmAsana/go-yapraktikum-final/pkg/bonussystem"
 	"github.com/OmAsana/go-yapraktikum-final/pkg/logger"
 	"github.com/OmAsana/go-yapraktikum-final/pkg/repo"
 	"github.com/OmAsana/go-yapraktikum-final/pkg/server"
@@ -82,8 +83,11 @@ func run(cmd *cobra.Command, args []string) {
 			return ctx
 		}}
 
+	bonusSystem := bonussystem.NewBonusSystem(Config.AccrualSystemAddress, orderRepo, log)
 	g, gCtx := errgroup.WithContext(ctx)
-
+	g.Go(func() error {
+		return bonusSystem.Run(gCtx)
+	})
 	g.Go(func() error {
 		log.Info("Serving", zap.String("addr", srv.Addr))
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
