@@ -1,0 +1,27 @@
+version: '3.1'
+
+services:
+
+  gophermart:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: gophermart.Dockerfile
+    environment:
+      DATABASE_URI: "postgresql://practicum:practicum@postgre:5432"
+      RUN_ADDRESS: localhost:8081
+      ACCRUAL_SYSTEM_ADDRESS: localhost:9090
+      LOG_LEVEL: debug
+    depends_on:
+      - "postgre"
+  postgre:
+    image: postgres:13.3
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: "practicum"
+      POSTGRES_USER: "practicum"
+      POSTGRES_PASSWORD: "practicum"
+    restart: unless-stopped
+
+

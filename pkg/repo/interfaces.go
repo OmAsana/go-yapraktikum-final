@@ -1,0 +1,18 @@
+package repo
+
+import (
+	"context"
+
+	"github.com/OmAsana/go-yapraktikum-final/pkg/models"
+)
+
+type UserRepository interface {
+	Create(ctx context.Context, username string, pwdHash string) error
+	Authenticate(ctx context.Context, username string, pwdHash string) (int, error)
+}
+type OrderRepository interface {
+	CreateNewOrder(ctx context.Context, order models.Order) error
+	ListOrders(ctx context.Context, userID int) ([]*models.Order, error)
+	ListWithdrawals(ctx context.Context, userID int) ([]*models.Order, error)
+	CurrentBalance(ctx context.Context, userID int) (int, error)
+}
