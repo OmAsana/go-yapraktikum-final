@@ -11,7 +11,7 @@ import (
 	logr "github.com/OmAsana/go-yapraktikum-final/pkg/logger"
 )
 
-var _ User = (*userRepo)(nil)
+var _ UserRepository = (*userRepo)(nil)
 
 type userRepo struct {
 	db  *sql.DB
@@ -25,7 +25,7 @@ func newUserRepo(db *sql.DB, logger *zap.Logger) *userRepo {
 	return &userRepo{db: db, log: logger}
 }
 
-func (u *userRepo) Create(ctx context.Context, username string, pwdHash string) Error {
+func (u *userRepo) Create(ctx context.Context, username string, pwdHash string) error {
 	var err error
 	l := u.log.With(zap.String("username", username))
 	defer func() {
@@ -52,7 +52,7 @@ func (u *userRepo) Create(ctx context.Context, username string, pwdHash string) 
 	return nil
 }
 
-func (u *userRepo) Authenticate(ctx context.Context, username string, pwdHash string) (int, Error) {
+func (u *userRepo) Authenticate(ctx context.Context, username string, pwdHash string) (int, error) {
 	var err error
 	l := u.log.With(zap.String("username", username))
 	defer func() {

@@ -115,7 +115,7 @@ func Test_orderRepo_queryOrders(t *testing.T) {
 		name    string
 		TXtype  models.OrderType
 		wantErr bool
-		err     Error
+		err     error
 		userID  int
 		rows    *sqlmock.Rows
 		orders  []*models.Order

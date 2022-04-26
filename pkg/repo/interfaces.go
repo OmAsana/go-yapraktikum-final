@@ -2,32 +2,17 @@ package repo
 
 import (
 	"context"
-	"errors"
 
 	"github.com/OmAsana/go-yapraktikum-final/pkg/models"
 )
 
-type Error error
-
-var (
-	ErrUserNotFound      Error = errors.New("user does not exist")
-	ErrUserAuthFailed    Error = errors.New("user authentication failed")
-	ErrUserAlreadyExists Error = errors.New("duplicate user name")
-
-	ErrDuplicateOrder                    Error = errors.New("duplicate order")
-	ErrOrderAlreadyUploadedByCurrentUser Error = errors.New("order already exist for this user")
-	ErrOrderCreatedByAnotherUser         Error = errors.New("order already exist for another user")
-
-	ErrInternalError Error = errors.New("internal error")
-)
-
-type User interface {
-	Create(ctx context.Context, username string, pwdHash string) Error
-	Authenticate(ctx context.Context, username string, pwdHash string) (int, Error)
+type UserRepository interface {
+	Create(ctx context.Context, username string, pwdHash string) error
+	Authenticate(ctx context.Context, username string, pwdHash string) (int, error)
 }
-type Order interface {
-	CreateNewOrder(ctx context.Context, order models.Order) Error
+type OrderRepository interface {
+	CreateNewOrder(ctx context.Context, order models.Order) error
 	ListOrders(ctx context.Context, userID int) ([]*models.Order, error)
 	ListWithdrawals(ctx context.Context, userID int) ([]*models.Order, error)
-	CurrentBalance(ctx context.Context, userID int) (int, Error)
+	CurrentBalance(ctx context.Context, userID int) (int, error)
 }

@@ -34,7 +34,7 @@ func TestCreateUser(t *testing.T) {
 	tests := []struct {
 		name    string
 		wantErr bool
-		err     Error
+		err     error
 		args
 	}{
 		{
@@ -91,7 +91,7 @@ func TestUserAuth(t *testing.T) {
 		name    string
 		wantErr bool
 		userID  int
-		err     Error
+		err     error
 		args
 	}{
 		{

@@ -12,7 +12,7 @@ import (
 	"github.com/OmAsana/go-yapraktikum-final/pkg/models"
 )
 
-var _ Order = (*orderRepo)(nil)
+var _ OrderRepository = (*orderRepo)(nil)
 
 type orderRepo struct {
 	db  *sql.DB
@@ -26,48 +26,7 @@ func newOrderRepo(db *sql.DB, logger *zap.Logger) *orderRepo {
 	return &orderRepo{db: db, log: logger}
 }
 
-//func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Error {
-//	var err error
-//	l := u.log.With(zap.Int("order", order.OrderID))
-//	defer func() {
-//		if err != nil {
-//			l.Error("error creating order", zap.Error(err))
-//		}
-//	}()
-//	sqlStatement := `INSERT INTO orders (order_id, status, tx_type, accrual, user_id, uploaded_at)
-//VALUES ($1, $2, $3, $4, $5, $6)`
-//
-//	res, err := u.db.ExecContext(ctx, sqlStatement,
-//		order.OrderID,
-//		models.NewStatus,
-//		order.TXType,
-//		order.Accrual,
-//		order.UserID,
-//		time.Now())
-//	if err != nil {
-//		// duplicate key error
-//		if strings.Contains(err.Error(), "SQLSTATE 23505") {
-//			return ErrDuplicateOrder
-//		}
-//	}
-//
-//	inserts, err := res.RowsAffected()
-//	if err != nil {
-//		return ErrInternalError
-//
-//	}
-//
-//	if inserts != 1 {
-//		// TODO
-//		// Implement  zapcore.ObjectMarshaler
-//		u.log.Debug("Did not create order", zap.Reflect("order", order))
-//		return ErrInternalError
-//	}
-//
-//	return nil
-//}
-
-func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Error {
+func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) error {
 	l := u.log.With(zap.Int("order", order.OrderID))
 
 	findOrderSql := `SELECT user_id FROM orders WHERE order_id = $1`
@@ -178,7 +137,7 @@ WHERE user_id = $1 AND tx_type = $2`
 	return orders, nil
 }
 
-func (u *orderRepo) CurrentBalance(ctx context.Context, userID int) (int, Error) {
+func (u *orderRepo) CurrentBalance(ctx context.Context, userID int) (int, error) {
 	var err error
 	l := u.log.With(zap.Int("user_id", userID))
 	defer func() {
