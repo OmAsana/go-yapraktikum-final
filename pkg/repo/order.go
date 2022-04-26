@@ -11,7 +11,7 @@ import (
 	"github.com/OmAsana/go-yapraktikum-final/pkg/models"
 )
 
-var _ Order = (*orderRepo)(nil)
+var _ OrderRepository = (*orderRepo)(nil)
 
 type orderRepo struct {
 	db  *sql.DB
@@ -32,7 +32,7 @@ func (u *orderRepo) UpdateOrder(ctx context.Context, order models.Order) Error {
 	return nil
 }
 
-func (u *orderRepo) ListUnprocessedOrders(ctx context.Context, limit, offset int) ([]*models.Order, Error) {
+func (u *orderRepo) ListUnprocessedOrders(ctx context.Context, limit, offset int) ([]*models.Order, error) {
 	l := logr.FromContext(ctx)
 
 	sqlStatement := `SELECT order_id, status, tx_type, accrual, user_id, uploaded_at, processed_at
@@ -99,7 +99,7 @@ func newOrderRepo(db *sql.DB, logger *zap.Logger) *orderRepo {
 	return &orderRepo{db: db, log: logger}
 }
 
-func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) Error {
+func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) error {
 	l := logr.FromContext(ctx)
 
 	findOrderSQL := `SELECT user_id FROM orders WHERE order_id = $1`
@@ -154,11 +154,11 @@ func (u *orderRepo) ListOrders(ctx context.Context, userID int) ([]*models.Order
 	return u.queryOrders(ctx, userID, models.DepositOrder)
 }
 
-func (u *orderRepo) ListWithdrawals(ctx context.Context, userID int) ([]*models.Order, Error) {
+func (u *orderRepo) ListWithdrawals(ctx context.Context, userID int) ([]*models.Order, error) {
 	return u.queryOrders(ctx, userID, models.WithdrawalOrder)
 }
 
-func (u *orderRepo) queryOrders(ctx context.Context, userID int, orderType models.OrderType) ([]*models.Order, Error) {
+func (u *orderRepo) queryOrders(ctx context.Context, userID int, orderType models.OrderType) ([]*models.Order, error) {
 	var err error
 	l := logr.FromContext(ctx)
 	defer func() {
@@ -202,7 +202,7 @@ WHERE user_id = $1 AND tx_type = $2`
 		}
 
 		if err != nil {
-			return nil, ErrInternalError
+			return nil, err
 		}
 
 		orders = append(orders, &order)
@@ -211,7 +211,7 @@ WHERE user_id = $1 AND tx_type = $2`
 	return orders, nil
 }
 
-func (u *orderRepo) CurrentBalance(ctx context.Context, userID int) (int, Error) {
+func (u *orderRepo) CurrentBalance(ctx context.Context, userID int) (int, error) {
 	var err error
 	l := logr.FromContext(ctx)
 	defer func() {
