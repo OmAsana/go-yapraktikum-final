@@ -21,7 +21,6 @@ type orderRepo struct {
 func (u *orderRepo) UpdateOrder(ctx context.Context, order models.Order) error {
 	l := logr.FromContext(ctx)
 
-	l.Info("blah")
 	sqlStatement := `UPDATE orders SET status = $1, accrual = $2, processed_at = $3 WHERE order_id = ($4)`
 	_, err := u.db.ExecContext(ctx, sqlStatement, order.Status, order.Accrual, order.ProcessedAt, order.OrderID)
 	if err != nil {

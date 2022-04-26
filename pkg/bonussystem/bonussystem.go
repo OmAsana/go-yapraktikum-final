@@ -26,7 +26,7 @@ var (
 type AccrualResp struct {
 	Order   string
 	Status  OrderStatus
-	Accrual int
+	Accrual float64
 }
 
 type BonusSystem struct {

@@ -10,7 +10,7 @@ import (
 type Order struct {
 	Number     string             `json:"number"`
 	Status     models.OrderStatus `json:"status"`
-	Accrual    int                `json:"accrual,omitempty"`
+	Accrual    float64            `json:"accrual,omitempty"`
 	UploadedAt string             `json:"uploaded_at"`
 }
 

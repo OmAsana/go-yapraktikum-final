@@ -22,7 +22,7 @@ type Order struct {
 	OrderID     int
 	Status      OrderStatus
 	TXType      OrderType
-	Accrual     int
+	Accrual     float64
 	UserID      int
 	UploadedAt  time.Time
 	ProcessedAt time.Time
