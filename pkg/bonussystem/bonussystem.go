@@ -31,13 +31,13 @@ type AccrualResp struct {
 
 type BonusSystem struct {
 	endpoint   string
-	orderRepo  repo.Order
+	orderRepo  repo.OrderRepository
 	log        *zap.Logger
 	client     *resty.Client
 	inShutdown bool
 }
 
-func NewBonusSystem(endpoint string, orderRepo repo.Order, logger *zap.Logger) *BonusSystem {
+func NewBonusSystem(endpoint string, orderRepo repo.OrderRepository, logger *zap.Logger) *BonusSystem {
 	client := resty.New()
 	client.SetBaseURL(endpoint + "/api/orders")
 

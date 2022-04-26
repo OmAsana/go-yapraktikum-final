@@ -24,12 +24,12 @@ import (
 type Server struct {
 	*chi.Mux
 	logger    *zap.Logger
-	userRepo  repo.User
-	orderRepo repo.Order
+	userRepo  repo.UserRepository
+	orderRepo repo.OrderRepository
 	jwtAuth   *jwt.Authentication
 }
 
-func NewServer(logger *zap.Logger, userRepo repo.User, orderRepo repo.Order, salt string) *Server {
+func NewServer(logger *zap.Logger, userRepo repo.UserRepository, orderRepo repo.OrderRepository, salt string) *Server {
 	srv := &Server{
 		Mux:       chi.NewMux(),
 		logger:    logger,

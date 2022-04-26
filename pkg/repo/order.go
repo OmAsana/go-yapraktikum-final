@@ -18,7 +18,7 @@ type orderRepo struct {
 	log *zap.Logger
 }
 
-func (u *orderRepo) UpdateOrder(ctx context.Context, order models.Order) Error {
+func (u *orderRepo) UpdateOrder(ctx context.Context, order models.Order) error {
 	l := logr.FromContext(ctx)
 
 	l.Info("blah")
@@ -150,7 +150,7 @@ func (u *orderRepo) CreateNewOrder(ctx context.Context, order models.Order) erro
 	}
 }
 
-func (u *orderRepo) ListOrders(ctx context.Context, userID int) ([]*models.Order, Error) {
+func (u *orderRepo) ListOrders(ctx context.Context, userID int) ([]*models.Order, error) {
 	return u.queryOrders(ctx, userID, models.DepositOrder)
 }
 
