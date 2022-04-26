@@ -7,6 +7,7 @@ require (
 	github.com/caarlos0/env/v6 v6.9.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-chi/chi/v5 v5.0.7
+	github.com/go-resty/resty/v2 v2.7.0
 	github.com/jackc/pgx/v4 v4.15.0
 	github.com/pressly/goose/v3 v3.5.3
 	github.com/spf13/cobra v1.4.0
@@ -32,6 +33,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
