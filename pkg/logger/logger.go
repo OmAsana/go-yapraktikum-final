@@ -42,7 +42,10 @@ func Logger(next http.Handler) http.Handler {
 
 func FromContext(ctx context.Context) *zap.Logger {
 	reqID := middleware.GetReqID(ctx)
-	return logger.With(zap.String("reqId", reqID))
+	if reqID != "" {
+		return logger.With(zap.String("reqId", reqID))
+	}
+	return logger
 }
 
 func SetLogLevel(level string) error {
