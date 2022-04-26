@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -47,6 +48,7 @@ func NewServer(logger *zap.Logger, userRepo repo.User, orderRepo repo.Order, sal
 		r.Group(func(r chi.Router) {
 			r.Use(srv.jwtAuth.CheckAuthentication)
 			r.Post("/orders", srv.createOrder)
+			r.Get("/orders", srv.getOrder)
 
 		})
 	})
@@ -206,6 +208,45 @@ func (s *Server) createOrder(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+}
+
+func (s *Server) getOrder(w http.ResponseWriter, r *http.Request) {
+	log := logger2.FromContext(r.Context())
+	userID, err := controllers.UserIDFromContext(r.Context())
+	if err != nil {
+		log.Error("orders", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	orders, err := s.orderRepo.ListOrders(r.Context(), userID)
+	if err != nil {
+		log.Error("Could not retrieve orders", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if len(orders) == 0 {
+		log.Info("No orders to return")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	sort.Slice(orders, func(i, j int) bool {
+		return orders[i].UploadedAt.Before(orders[j].UploadedAt)
+	})
+
+	var o []controllers.Order
+	for _, v := range orders {
+		o = append(o, controllers.OrderModelToController(*v))
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(o); err != nil {
+		log.Error("Error encoding orders", zap.Error(err))
+	}
+	return
 }
 
 func Contains(list []string, value string) bool {
