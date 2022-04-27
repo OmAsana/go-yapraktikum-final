@@ -263,21 +263,37 @@ WHERE user_id = $1 AND tx_type = $2`
 	return orders, nil
 }
 
-func (u *orderRepo) CurrentBalance(ctx context.Context, userID int) (int, error) {
+func (u *orderRepo) CurrentBalance(ctx context.Context, userID int) (models.Balance, error) {
 	var err error
 	l := logr.FromContext(ctx)
-	defer func() {
-		if err != nil {
-			l.Error("error getting user balance", zap.Error(err))
-		}
-	}()
 
-	sqlStatement := `SELECT COALESCE(SUM(accrual),0) AS total FROM orders WHERE user_id = $1`
-
-	var sum int
-	err = u.db.QueryRowContext(ctx, sqlStatement, userID).Scan(&sum)
+	tx, err := u.db.BeginTx(ctx, nil)
 	if err != nil {
-		return -1, ErrInternalError
+		l.Error("Could not begin tx", zap.Error(err))
 	}
-	return sum, nil
+	defer tx.Rollback()
+
+	sqlStatement := `SELECT COALESCE(SUM(accrual),0)
+AS total FROM orders 
+WHERE user_id = $1 AND tx_type = $2 AND status = $3`
+
+	var deposit float64
+	err = tx.QueryRowContext(ctx, sqlStatement, userID, models.DepositOrder, models.ProcessedStatus).Scan(&deposit)
+	if err != nil {
+		l.Error("Error quering deposit", zap.Error(err))
+		return models.Balance{}, ErrInternalError
+	}
+
+	var withdrawal float64
+	err = tx.QueryRowContext(ctx, sqlStatement, userID, models.WithdrawalOrder, models.ProcessedStatus).Scan(&withdrawal)
+	if err != nil {
+		l.Error("Error withdrawal deposit", zap.Error(err))
+		return models.Balance{}, ErrInternalError
+	}
+
+	tx.Commit()
+	return models.Balance{
+		Current:   deposit - withdrawal,
+		Withdrawn: withdrawal,
+	}, nil
 }

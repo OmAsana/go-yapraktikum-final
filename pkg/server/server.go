@@ -51,6 +51,7 @@ func NewServer(logger *zap.Logger, userRepo repo.UserRepository, orderRepo repo.
 			r.Get("/orders", srv.getOrder)
 
 			r.Route("/balance", func(r chi.Router) {
+				r.Get("/", srv.currentBalance)
 				r.Post("/withdraw", srv.withdraw)
 			})
 		})
@@ -294,5 +295,28 @@ func (s *Server) withdraw(w http.ResponseWriter, r *http.Request) {
 		log.Error("Internal error", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+}
+
+func (s *Server) currentBalance(w http.ResponseWriter, r *http.Request) {
+	log := logger2.FromContext(r.Context())
+	userID, err := controllers.UserIDFromContext(r.Context())
+	if err != nil {
+		log.Error("orders", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	balancer, err := s.orderRepo.CurrentBalance(r.Context(), userID)
+	if err != nil {
+		log.Error("Internal error", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set(headers.ContentType, mimetype.ApplicationJSON)
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(balancer)
+	if err != nil {
+		log.Error("Error encoding response", zap.Error(err))
 	}
 }

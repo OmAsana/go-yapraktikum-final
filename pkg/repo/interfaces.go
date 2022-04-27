@@ -15,7 +15,7 @@ type OrderRepository interface {
 	ListOrders(ctx context.Context, userID int) ([]*models.Order, error)
 	ListWithdrawals(ctx context.Context, userID int) ([]*models.Order, error)
 
-	CurrentBalance(ctx context.Context, userID int) (int, error)
+	CurrentBalance(ctx context.Context, userID int) (models.Balance, error)
 
 	Withdraw(ctx context.Context, order models.Order) error
 
