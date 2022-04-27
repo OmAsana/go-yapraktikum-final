@@ -26,7 +26,9 @@ func withContentType(mimeType string) func(http.Handler) http.Handler {
 
 func Contains(list []string, value string) bool {
 	for _, v := range list {
-		return v == value
+		if v == value {
+			return true
+		}
 	}
 	return false
 }
