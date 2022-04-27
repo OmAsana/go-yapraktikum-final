@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sort"
@@ -11,7 +10,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/theplant/luhn"
+	"github.com/go-http-utils/headers"
+	"github.com/ldez/mimetype"
 	"go.uber.org/zap"
 
 	"github.com/OmAsana/go-yapraktikum-final/pkg/controllers"
@@ -43,14 +43,18 @@ func NewServer(logger *zap.Logger, userRepo repo.UserRepository, orderRepo repo.
 	srv.Use(middleware.Recoverer)
 
 	srv.Route("/api/user", func(r chi.Router) {
-		r.Post("/register", srv.register)
-		r.Post("/login", srv.login)
+		r.With(withContentType(mimetype.ApplicationJSON)).Post("/register", srv.register)
+		r.With(withContentType(mimetype.ApplicationJSON)).Post("/login", srv.login)
 		r.Group(func(r chi.Router) {
 			r.Use(srv.jwtAuth.CheckAuthentication)
-			r.Post("/orders", srv.createOrder)
+			r.With(withContentType(mimetype.TextPlain)).Post("/orders", srv.createOrder)
 			r.Get("/orders", srv.getOrder)
 
+			r.Route("/balance", func(r chi.Router) {
+				r.Post("/withdraw", srv.withdraw)
+			})
 		})
+
 	})
 
 	srv.Get("/ping", srv.Ping())
@@ -60,7 +64,7 @@ func NewServer(logger *zap.Logger, userRepo repo.UserRepository, orderRepo repo.
 
 func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 	log := logger2.FromContext(r.Context())
-	body, err := validateRequest(r)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Error("Error validating request", zap.Error(err))
 		w.WriteHeader(http.StatusBadRequest)
@@ -99,33 +103,22 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func validateRequest(r *http.Request) ([]byte, error) {
-	if !Contains(r.Header.Values("Content-Type"), "application/json") {
-		return nil, fmt.Errorf("wrong content type: %s", r.Header.Values("Content-Type"))
-	}
-
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return nil, err
-	}
-	return body, nil
-}
-
 func (s *Server) Ping() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		log := logger2.FromContext(request.Context())
 		log.Info("Blah")
 		writer.WriteHeader(http.StatusOK)
-		writer.Header().Set("Content-Type", "application/text")
+		writer.Header().Set(headers.ContentType, "application/text")
+
 		writer.Write([]byte("pong"))
 	}
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	log := logger2.FromContext(r.Context())
-	body, err := validateRequest(r)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Error("Error validating request", zap.Error(err))
+		log.Error("Error reading body", zap.Error(err))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -168,31 +161,28 @@ func (s *Server) createOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !Contains(r.Header.Values("Content-Type"), "text/plain") {
-		log.Error("Wrong content type")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Error("Error reading body", zap.Error(err))
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	orderID, err := strconv.Atoi(string(body))
-	if err != nil {
-		fmt.Println(err)
-		log.Error("Error converting body to int", zap.Error(err))
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-	if !luhn.Valid(orderID) {
-		log.Error("Invalid order id", zap.Int("order_id", orderID))
+		log.Error("Could not read request body", zap.Error(err))
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
 
-	err = s.orderRepo.CreateNewOrder(r.Context(), models.NewOrder(orderID, userID))
+	orderID, err := orderIDFromBytes(body)
+	if err != nil {
+		log.Error("Could not create orderID", zap.Error(err))
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+
+	o := models.NewOrder(orderID, userID)
+	if !o.Valid() {
+		log.Error("OrderIS is invalid")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+
+	err = s.orderRepo.CreateNewOrder(r.Context(), o)
 	switch {
 	case err == nil:
 		w.WriteHeader(http.StatusAccepted)
@@ -208,6 +198,14 @@ func (s *Server) createOrder(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+}
+
+func orderIDFromBytes(order []byte) (int, error) {
+	orderID, err := strconv.Atoi(string(order))
+	if err != nil {
+		return -1, err
+	}
+	return orderID, nil
 }
 
 func (s *Server) getOrder(w http.ResponseWriter, r *http.Request) {
@@ -241,16 +239,60 @@ func (s *Server) getOrder(w http.ResponseWriter, r *http.Request) {
 		o = append(o, controllers.OrderModelToController(*v))
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(headers.ContentType, mimetype.ApplicationJSON)
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(o); err != nil {
 		log.Error("Error encoding orders", zap.Error(err))
 	}
 }
 
-func Contains(list []string, value string) bool {
-	for _, v := range list {
-		return v == value
+func (s *Server) withdraw(w http.ResponseWriter, r *http.Request) {
+	log := logger2.FromContext(r.Context())
+	userID, err := controllers.UserIDFromContext(r.Context())
+	if err != nil {
+		log.Error("orders", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	return false
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Error("Error reading body", zap.Error(err))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var withdrawal controllers.Withdrawal
+	err = json.Unmarshal(body, &withdrawal)
+	if err != nil {
+		log.Error("Error decoding withdrawal", zap.Error(err), zap.ByteString("body", body))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	order, err := withdrawal.ToOrder(userID)
+	if err != nil {
+		log.Error("Error creating order", zap.Error(err))
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	if !order.Valid() {
+		log.Error("Invalid order id")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+
+	err = s.orderRepo.Withdraw(r.Context(), order)
+	switch {
+	case err == repo.ErrNotEnoughFunds:
+		log.Info("Not enough funds")
+		w.WriteHeader(http.StatusPaymentRequired)
+		return
+	case err == nil:
+		w.WriteHeader(http.StatusOK)
+		return
+	default:
+		log.Error("Internal error", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }

@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/theplant/luhn"
+)
 
 type OrderType string
 
@@ -36,4 +40,8 @@ func NewOrder(orderID int, userID int) Order {
 		Accrual: 0,
 		UserID:  userID,
 	}
+}
+
+func (o Order) Valid() bool {
+	return luhn.Valid(o.OrderID)
 }

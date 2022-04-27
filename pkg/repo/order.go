@@ -18,6 +18,59 @@ type orderRepo struct {
 	log *zap.Logger
 }
 
+func (u *orderRepo) Withdraw(ctx context.Context, order models.Order) error {
+	l := logr.FromContext(ctx)
+
+	tx, err := u.db.BeginTx(ctx, nil)
+	if err != nil {
+		l.Error("Could not begin tx", zap.Error(err))
+	}
+	defer tx.Rollback()
+
+	sqlStatement := `SELECT COALESCE(SUM(accrual),0) AS total FROM orders WHERE user_id = $1 and tx_type = $2`
+
+	var depositSum float64
+	err = tx.QueryRowContext(ctx, sqlStatement, order.UserID, models.DepositOrder).Scan(&depositSum)
+	if err != nil {
+		l.Error("Error querying db", zap.Error(err))
+		return ErrInternalError
+	}
+
+	var withdrawSum float64
+	err = tx.QueryRowContext(ctx, sqlStatement, order.UserID, models.WithdrawalOrder).Scan(&withdrawSum)
+	if err != nil {
+		l.Error("Error querying db", zap.Error(err))
+		return ErrInternalError
+	}
+
+	if depositSum-withdrawSum > order.Accrual {
+		sqlStatement := `INSERT INTO orders (order_id, status, tx_type, accrual, user_id, uploaded_at, processed_at)
+	VALUES ($1, $2, $3, $4, $5, $6, $7)`
+		_, err := tx.ExecContext(ctx, sqlStatement,
+			order.OrderID,
+			models.ProcessedStatus,
+			order.TXType,
+			order.Accrual,
+			order.UserID,
+			order.UploadedAt,
+			time.Now())
+		if err != nil {
+			l.Error("Error processing withdrawal", zap.Error(err))
+			return ErrInternalError
+		}
+		err = tx.Commit()
+		if err != nil {
+			l.Error("Error commiting withdrawal", zap.Error(err))
+			return ErrInternalError
+		}
+	} else {
+		l.Info("Not enough funds")
+		return ErrNotEnoughFunds
+	}
+
+	return nil
+}
+
 func (u *orderRepo) UpdateOrder(ctx context.Context, order models.Order) error {
 	l := logr.FromContext(ctx)
 

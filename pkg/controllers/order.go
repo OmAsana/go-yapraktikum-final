@@ -27,3 +27,23 @@ func OrderModelToController(mo models.Order) Order {
 
 	return o
 }
+
+type Withdrawal struct {
+	Order       string    `json:"order"`
+	Sum         float64   `json:"sum"`
+	ProcessedAt time.Time `json:"processed_at"`
+}
+
+func (w Withdrawal) ToOrder(userID int) (models.Order, error) {
+	orderID, err := strconv.Atoi(w.Order)
+	if err != nil {
+		return models.Order{}, err
+	}
+	return models.Order{
+		OrderID:    orderID,
+		Status:     models.NewStatus,
+		TXType:     models.WithdrawalOrder,
+		Accrual:    w.Sum,
+		UserID:     userID,
+		UploadedAt: time.Now()}, nil
+}
