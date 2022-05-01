@@ -30,21 +30,29 @@ type AccrualResp struct {
 }
 
 type BonusSystem struct {
-	endpoint  string
-	orderRepo repo.OrderRepository
-	log       *zap.Logger
-	client    *resty.Client
+	endpoint       string
+	orderRepo      repo.OrderRepository
+	log            *zap.Logger
+	client         *resty.Client
+	updateInterval time.Duration
 }
 
-func NewBonusSystem(endpoint string, orderRepo repo.OrderRepository, logger *zap.Logger) *BonusSystem {
+func NewBonusSystem(endpoint string, orderRepo repo.OrderRepository, logger *zap.Logger, opts ...Option) *BonusSystem {
 	client := resty.New()
 	client.SetBaseURL(endpoint + "/api/orders")
 
-	return &BonusSystem{
-		orderRepo: orderRepo,
-		log:       logger,
-		client:    client,
+	b := &BonusSystem{
+		orderRepo:      orderRepo,
+		log:            logger,
+		client:         client,
+		updateInterval: 1 * time.Second,
 	}
+
+	for _, v := range opts {
+		v(b)
+	}
+
+	return b
 }
 
 func (s *BonusSystem) updateOrders(ctx context.Context, orders []*models.Order) {
@@ -118,7 +126,7 @@ func (s *BonusSystem) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			s.log.Info("Shutting down")
 			return nil
-		case <-time.After(1 * time.Second):
+		case <-time.After(s.updateInterval):
 			s.processOrders(ctx)
 		}
 	}
