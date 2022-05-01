@@ -30,11 +30,10 @@ type AccrualResp struct {
 }
 
 type BonusSystem struct {
-	endpoint   string
-	orderRepo  repo.OrderRepository
-	log        *zap.Logger
-	client     *resty.Client
-	inShutdown bool
+	endpoint  string
+	orderRepo repo.OrderRepository
+	log       *zap.Logger
+	client    *resty.Client
 }
 
 func NewBonusSystem(endpoint string, orderRepo repo.OrderRepository, logger *zap.Logger) *BonusSystem {
@@ -42,10 +41,9 @@ func NewBonusSystem(endpoint string, orderRepo repo.OrderRepository, logger *zap
 	client.SetBaseURL(endpoint + "/api/orders")
 
 	return &BonusSystem{
-		orderRepo:  orderRepo,
-		log:        logger,
-		client:     client,
-		inShutdown: false,
+		orderRepo: orderRepo,
+		log:       logger,
+		client:    client,
 	}
 }
 
