@@ -11,5 +11,7 @@ var (
 	ErrOrderAlreadyUploadedByCurrentUser = errors.New("order already exist for this user")
 	ErrOrderCreatedByAnotherUser         = errors.New("order already exist for another user")
 
+	ErrNotEnoughFunds = errors.New("not enough funds")
+
 	ErrInternalError = errors.New("internal error")
 )

@@ -20,10 +20,9 @@ var logger = zap.NewNop()
 func Logger(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
-		rCtx := r.Context()
 
 		t1 := time.Now()
-		reqID := middleware.GetReqID(rCtx)
+		reqID := middleware.GetReqID(r.Context())
 		defer func() {
 			logger.Info(
 				"Served",
@@ -32,19 +31,19 @@ func Logger(next http.Handler) http.Handler {
 				zap.Duration("took", time.Since(t1)),
 				zap.Int("status", ww.Status()),
 				zap.Int("size", ww.BytesWritten()),
-				zap.String("reqId", string(reqID)),
+				zap.String("reqId", reqID),
 			)
 		}()
 
-		ctx := context.WithValue(rCtx, ctxKey, reqID)
-		next.ServeHTTP(ww, r.WithContext(ctx))
+		next.ServeHTTP(ww, r)
 	}
 	return http.HandlerFunc(fn)
 }
 
 func FromContext(ctx context.Context) *zap.Logger {
-	if requestID, ok := ctx.Value(ctxKey).(ctxKeyType); ok {
-		return logger.With(zap.String("reqId", string(requestID)))
+	reqID := middleware.GetReqID(ctx)
+	if reqID != "" {
+		return logger.With(zap.String("reqId", reqID))
 	}
 	return logger
 }

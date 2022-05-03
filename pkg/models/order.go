@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/theplant/luhn"
+)
 
 type OrderType string
 
@@ -22,8 +26,22 @@ type Order struct {
 	OrderID     int
 	Status      OrderStatus
 	TXType      OrderType
-	Accrual     int
+	Accrual     float64
 	UserID      int
 	UploadedAt  time.Time
 	ProcessedAt time.Time
+}
+
+func NewOrder(orderID int, userID int) Order {
+	return Order{
+		OrderID: orderID,
+		Status:  NewStatus,
+		TXType:  DepositOrder,
+		Accrual: 0,
+		UserID:  userID,
+	}
+}
+
+func (o Order) Valid() bool {
+	return luhn.Valid(o.OrderID)
 }

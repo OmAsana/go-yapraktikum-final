@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"database/sql"
 	"net"
 	"net/http"
 	"os"
@@ -14,7 +15,9 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/OmAsana/go-yapraktikum-final/migrations"
+	"github.com/OmAsana/go-yapraktikum-final/pkg/bonussystem"
 	"github.com/OmAsana/go-yapraktikum-final/pkg/logger"
+	"github.com/OmAsana/go-yapraktikum-final/pkg/repo"
 	"github.com/OmAsana/go-yapraktikum-final/pkg/server"
 )
 
@@ -55,16 +58,38 @@ func run(cmd *cobra.Command, args []string) {
 		log.Sugar().Fatalf("migration: failed to apply migration: %v\n", err)
 	}
 
-	handler := server.NewServer(log)
+	db, err := sql.Open("pgx", Config.DatabaseURI)
+	if err != nil {
+		log.Fatal("could not connect to db", zap.Error(err))
+	}
+
+	defer func() {
+		_ = db.Close()
+	}()
+
+	userRepo, err := repo.UserRepo(db, log)
+	if err != nil {
+		log.Fatal("could not connect to db", zap.Error(err))
+	}
+
+	orderRepo, err := repo.OrderRepo(db, log)
+	if err != nil {
+		log.Fatal("could not connect to db", zap.Error(err))
+	}
+
+	handler := server.NewServer(log, userRepo, orderRepo, Config.Salt)
 	srv := &http.Server{Addr: Config.RunAddress, Handler: handler,
 		BaseContext: func(listener net.Listener) context.Context {
 			return ctx
 		}}
 
+	bonusSystem := bonussystem.NewBonusSystem(Config.AccrualSystemAddress, orderRepo, log)
 	g, gCtx := errgroup.WithContext(ctx)
-
 	g.Go(func() error {
-		log.Sugar().Infof("Serving on: %s", srv.Addr)
+		return bonusSystem.Run(gCtx)
+	})
+	g.Go(func() error {
+		log.Info("Serving", zap.String("addr", srv.Addr))
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			return err
 		}

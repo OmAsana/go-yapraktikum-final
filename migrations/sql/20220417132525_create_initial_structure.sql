@@ -1,9 +1,9 @@
 -- +goose Up
 CREATE TABLE if not exists public.users
 (
-    user_id       INT GENERATED ALWAYS AS IDENTITY,
+    user_id       BIGINT GENERATED ALWAYS AS IDENTITY,
     username      VARCHAR(50) UNIQUE NOT NULL,
-    password_hash VARCHAR(50)        NOT NULL,
+    password_hash TEXT               NOT NULL,
     created_at    TIMESTAMP          NOT NULL,
     last_login_at TIMESTAMP,
     PRIMARY KEY (user_id)
@@ -11,11 +11,11 @@ CREATE TABLE if not exists public.users
 
 CREATE TABLE if not exists public.orders
 (
-    order_id     INT         NOT NULL,
+    order_id     BIGINT      NOT NULL,
     status       VARCHAR(50) NOT NULL,
     tx_type      VARCHAR(50) NOT NULL,
     accrual      NUMERIC DEFAULT 0,
-    user_id      INT,
+    user_id      BIGINT,
     uploaded_at  TIMESTAMP   NOT NULL,
     processed_at TIMESTAMP,
     PRIMARY KEY (order_id),

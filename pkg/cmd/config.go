@@ -12,6 +12,7 @@ var Config = ConfigStruct{
 	RunAddress:           "localhost:8080",
 	AccrualSystemAddress: "",
 	LogLevel:             "info",
+	Salt:                 "some_salt",
 }
 
 type ConfigStruct struct {
@@ -19,6 +20,7 @@ type ConfigStruct struct {
 	RunAddress           string `env:"RUN_ADDRESS"`
 	AccrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
 	LogLevel             string `env:"LOG_LEVEL"`
+	Salt                 string `env:"SALT"`
 }
 
 func (c *ConfigStruct) initEnvArgs() error {
@@ -49,6 +51,7 @@ func setupConfig(cmd *cobra.Command, args []string) error {
 	cmd.Flags().StringVarP(&Config.RunAddress, "run_addr", "a", Config.RunAddress, "Run address")
 	cmd.Flags().StringVarP(&Config.AccrualSystemAddress, "accrual_addr", "r", Config.AccrualSystemAddress, "Accrual system address")
 	cmd.Flags().StringVarP(&Config.LogLevel, "log_level", "l", Config.LogLevel, "Log level")
+	cmd.Flags().StringVarP(&Config.Salt, "salt", "s", Config.Salt, "Salt for passwords")
 
 	if err := cmd.ParseFlags(args); err != nil {
 		return err
